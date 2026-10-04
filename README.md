@@ -19,6 +19,8 @@ Run with Python 3.12. Package versions are pinned to those used for the paper.
 1. Download `LTE_Dataset.zip` from https://zenodo.org/records/1219679
 2. Unzip it into `data/raw/d3_lte_ucc/` (this gives `Dataset/<mobility>/*.csv`)
 
+The notebook keeps LTE samples taken during an active download with all values present (107,577), then removes those with a reported distance to the serving cell above 20 km (4,592) and those with RSRP (55) or RSRQ (611) outside the 3GPP reporting ranges. Some samples fail more than one test; 5,194 are removed in all, leaving 102,383.
+
 ## Run
 
 ```bash
