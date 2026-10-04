@@ -1,0 +1,11 @@
+,mean,sd,ahead_of_RSRP,ahead_of_SINR,ahead_of_composite
+Fixed RSRP classes,0.38,0.078,3,0,0
+RSRP alone,0.398,0.082,0,2,0
+RSRQ alone,0.553,0.029,29,6,5
+SINR alone,0.582,0.039,28,0,15
+"Composite, eq. (5)",0.593,0.036,30,15,0
+Equal weights,0.605,0.035,30,17,27
+Linear normalization,0.58,0.035,30,15,0
+SINR and RSRQ only,0.604,0.033,30,28,19
+Linear regression (learned),0.581,0.036,28,15,16
+Gradient boosting (learned),0.638,0.033,30,30,24

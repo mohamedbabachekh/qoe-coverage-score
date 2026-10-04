@@ -1,0 +1,9 @@
+,rho_DL_seed42
+Fixed RSRP classes,0.32
+RSRP alone,0.332
+RSRQ alone,0.533
+SINR alone,0.591
+"Composite, eq. (5)",0.542
+Equal weights,0.55
+Linear normalization,0.533
+SINR and RSRQ only,0.59
