@@ -1,16 +1,15 @@
 """
-QoE scoring functions.
-Normalization and the coverage score used in Section 4 of the paper, plus
-feature helpers for the archived churn notebooks.
+QoE scoring functions used in Section 4 of the paper: KPI normalization
+(eqs. 1 and 2) and the coverage score (eq. 5) with its penalties.
 """
 import numpy as np
 import pandas as pd
 
 
-# ── Normalization functions (Section 3.1) ─────────────────────────────────
+# ── Normalization functions (Sect. 3.1) ─────────────────────────────────
 
 def linear_norm_pos(x, L, U):
-    """Eq. lin_pos: positive KPI (higher = better)."""
+    """Eq. (1), positive KPI (higher = better)."""
     return np.clip((x - L) / (U - L), 0, 1)
 
 
@@ -31,7 +30,7 @@ def logistic_norm_neg(x, a, b):
     return 1.0 / (1.0 + np.exp(+a * (x - b)))
 
 
-# ── KPI thresholds from Table 1 of the paper ──────────────────────────────
+# ── Levels and logistic parameters (Table 1 of the paper; SERVICE_SCORES.md for the rest) ──────────────────────────────
 
 KPI_THRESHOLDS = {
     "DL_Mbps":   {"dir": "pos", "L": 1.0,   "U": 20.0,   "a": 0.25, "b": 5.0},
@@ -62,12 +61,12 @@ def normalize_kpi(series, kpi_name, method="logistic"):
             return logistic_norm_neg(series, cfg["a"], cfg["b"])
 
 
-# ── Coverage QoE (eq:cov_qoe, Section 3.6) ────────────────────────────────
+# ── Coverage score (eq. 5, Sect. 3.2) ────────────────────────────────
 
 def compute_qoe_cov(df, col_rsrp=None, col_rsrq=None,
                     col_sinr=None, col_dist=None, method="logistic"):
     """
-    Eq. cov_qoe:
+    Eq. (5):
       QoE_COV = 100 × (0.35·Z_RSRP + 0.25·Z_RSRQ + 0.30·Z_SINR + 0.10·Z_DIST)
 
     If DIST or any KPI column is None/absent, weights are renormalized
@@ -126,7 +125,7 @@ def scores_to_classes(scores):
     return pd.Series(scores).apply(qoe_to_class)
 
 
-# ── Coverage penalty (eq:cov_penalty) ─────────────────────────────────────
+# ── Coverage penalties (Sect. 3.2) ─────────────────────────────────────
 
 def coverage_penalty(df, col_rsrp="RSRP_dBm", col_rsrq="RSRQ_dB",
                      col_sinr="SINR_dB"):
@@ -134,147 +133,3 @@ def coverage_penalty(df, col_rsrp="RSRP_dBm", col_rsrq="RSRQ_dB",
        + 10 * (df[col_rsrq] < -15).astype(int)
        + 10 * (df[col_sinr] < 0).astype(int))
     return p
-
-
-# ── D2 Framework-derived features (Section 7.5) ───────────────────────────
-
-# IBM Telco xlsx uses spaced/titled names; map to standard Kaggle CSV names.
-_IBM_TO_STANDARD = {
-    'CustomerID':      'customerID',
-    'Tenure Months':   'tenure',
-    'Senior Citizen':  'SeniorCitizen',
-    'Phone Service':   'PhoneService',
-    'Multiple Lines':  'MultipleLines',
-    'Internet Service':'InternetService',
-    'Online Security': 'OnlineSecurity',
-    'Online Backup':   'OnlineBackup',
-    'Device Protection':'DeviceProtection',
-    'Tech Support':    'TechSupport',
-    'Streaming TV':    'StreamingTV',
-    'Streaming Movies':'StreamingMovies',
-    'Paperless Billing':'PaperlessBilling',
-    'Payment Method':  'PaymentMethod',
-    'Monthly Charges': 'MonthlyCharges',
-    'Total Charges':   'TotalCharges',
-    'Churn Label':     'Churn',
-    'Churn Value':     '_ChurnValue',   # numeric target duplicate — drop later
-}
-# IBM-only columns that have no analogue in the standard Kaggle CSV
-_IBM_EXTRA_DROP = [
-    'Count', 'Country', 'State', 'City', 'Zip Code', 'Lat Long',
-    'Latitude', 'Longitude', 'Churn Score', 'Churn Reason', 'CLTV',
-    '_ChurnValue',
-]
-
-
-def _normalize_ibm_format(df):
-    """Rename IBM xlsx columns to standard Kaggle Telco CSV column names."""
-    df = df.rename(columns={k: v for k, v in _IBM_TO_STANDARD.items()
-                             if k in df.columns})
-    extra = [c for c in _IBM_EXTRA_DROP if c in df.columns]
-    if extra:
-        df = df.drop(columns=extra)
-    return df
-
-
-def engineer_churn_features(df):
-    """
-    Create framework-derived features from IBM Telco Churn dataset.
-    Maps CRM attributes to the paper's risk model components.
-    """
-    df = df.copy()
-
-    # --- recurrence proxy R̂: customer with unresolved chronic issues ---
-    month_to_month = (df["Contract"] == "Month-to-month").astype(int)
-    no_support     = (df["TechSupport"] == "No").astype(int)
-    new_customer   = (df["tenure"] < 12).astype(int)
-    df["recurrence_proxy"] = month_to_month * no_support * new_customer
-
-    # --- service complexity: active optional services (0–6) ---
-    optional_services = [
-        "OnlineSecurity", "OnlineBackup",
-        "DeviceProtection", "TechSupport",
-        "StreamingTV", "StreamingMovies"
-    ]
-    df["service_complexity"] = df[optional_services].apply(
-        lambda row: (row == "Yes").sum(), axis=1
-    )
-
-    # --- spend anomaly: normalized deviation from cohort average ---
-    df["MonthlyCharges_num"] = pd.to_numeric(df["MonthlyCharges"], errors="coerce")
-    mu = df["MonthlyCharges_num"].mean()
-    sigma = df["MonthlyCharges_num"].std()
-    df["spend_anomaly"] = (df["MonthlyCharges_num"] - mu) / (sigma + 1e-8)
-
-    # --- VIP proxy: high-spend + long-tenure ---
-    df["vip_proxy"] = (
-        (df["MonthlyCharges_num"] > df["MonthlyCharges_num"].quantile(0.75))
-        & (df["tenure"] > 24)
-    ).astype(int)
-
-    return df
-
-
-def _read_d2(filepath):
-    """Load D2 from CSV or xlsx, normalizing IBM column names."""
-    if filepath.endswith('.xlsx') or filepath.endswith('.xls'):
-        df = pd.read_excel(filepath)
-    else:
-        df = pd.read_csv(filepath)
-    return _normalize_ibm_format(df)
-
-
-def encode_churn_dataset(df):
-    """One-hot encode categorical columns, return X, y."""
-    # Normalize IBM format if needed (idempotent on standard CSV)
-    df = _normalize_ibm_format(df.copy())
-    df = engineer_churn_features(df)
-
-    # Target — works for both 'Yes'/'No' and 1/0 encodings
-    churn_col = 'Churn' if 'Churn' in df.columns else None
-    if churn_col is None:
-        raise ValueError("No 'Churn' column found after normalization.")
-    df["Churn_bin"] = pd.to_numeric(
-        df[churn_col].map({"Yes": 1, "No": 0}).fillna(df[churn_col]),
-        errors="coerce"
-    ).fillna(0).astype(int)
-    y = df["Churn_bin"]
-
-    # Drop ID and target columns
-    drop_cols = ["customerID", "Churn", "Churn_bin", "TotalCharges"]
-    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
-
-    # Encode binary yes/no columns
-    yes_no_cols = [c for c in df.columns
-                   if df[c].dtype == object and
-                   set(df[c].dropna().unique()).issubset(
-                       {"Yes", "No", "No phone service", "No internet service"}
-                   )]
-    for col in yes_no_cols:
-        df[col] = df[col].map(
-            {"Yes": 1, "No": 0,
-             "No phone service": 0, "No internet service": 0}
-        )
-
-    # One-hot for remaining object columns
-    cat_cols = [c for c in df.columns if df[c].dtype == object]
-    df = pd.get_dummies(df, columns=cat_cols, drop_first=True)
-
-    # Fix any remaining NaN
-    df = df.fillna(df.median(numeric_only=True))
-
-    return df, y
-
-
-# ── Result formatting helpers ──────────────────────────────────────────────
-
-def print_latex_row(model_name, metrics_dict):
-    """Print a LaTeX table row for the results tables."""
-    vals = " & ".join(f"{v:.3f}" for v in metrics_dict.values())
-    print(f"    {model_name} & {vals} \\\\")
-
-
-def save_results(results_dict, filepath):
-    """Save results dict to CSV."""
-    pd.DataFrame(results_dict).to_csv(filepath, index=False)
-    print(f"Saved: {filepath}")

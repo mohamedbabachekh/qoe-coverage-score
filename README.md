@@ -29,14 +29,15 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/05_coverage_qoe_d3
 
 | Output | Paper |
 |---|---|
-| `results/tab_d3_coverage_results.csv` | Table 3, single split (seed 42) with bootstrap intervals |
-| `results/tab_d3_repeated_splits.csv`, `tab_d3_repeated_splits_summary.csv` | Table 3, 30 splits (fixed scores, variants, learned references); Fig. 1 |
-| `results/tab_d3_sensitivity.csv` | Table 3, single-split column for the variants |
+| `results/tab_d3_coverage_results.csv` | Table 2, single split (seed 42) with bootstrap intervals |
+| `results/tab_d3_repeated_splits.csv`, `tab_d3_repeated_splits_summary.csv` | Table 2, 30 splits (fixed scores, variants, learned references); Fig. 1 |
+| `results/tab_d3_sensitivity.csv` | Table 2, single-split column for the variants (middle part) |
+| `results/tab_d3_robustness.csv` | Sect. 4.2: score with penalties; larger sample without the distance requirement |
 | `results/tab_d3_weights.csv` | Weight procedure applied to the training traces (Sect. 4.2) |
 | `results/tab_d3_bands_all.csv` | Band shares and medians (Sect. 4.3); Fig. 2 |
 | `results/figures/d3_repeated_splits.pdf`, `d3_throughput_by_band.pdf` | Figs. 1 and 2 |
 
-The scoring functions are in `src/qoe_framework.py`.
+The scoring functions are in `src/qoe_framework.py`. The six service scores that the paper omits for space, with all levels, weights and penalties, are in `SERVICE_SCORES.md`.
 
 ## Licence
 
