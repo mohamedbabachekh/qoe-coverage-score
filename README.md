@@ -2,7 +2,7 @@
 
 Code for the evaluation in Section 4 of:
 
-M. Babachekh, A. Bahri, A. Bengag, F. Bouhafer, *A Multi-KPI Coverage Score for Mobile Networks: Design and Evaluation on Public LTE Drive-Test Data*.
+M. Babachekh, A. Bahri, A. Bengag, F. Bouhafer, *A QoE Scoring Framework for 4G/5G Mobile Networks: Design and Evaluation of Its Coverage Score on Public Drive-Test Data*.
 
 ## Setup
 
